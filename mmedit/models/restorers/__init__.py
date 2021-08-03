@@ -9,7 +9,9 @@ from .srgan import SRGAN
 from .tdan import TDAN
 from .ttsr import TTSR
 
+from .swin import SRSWIN
+
 __all__ = [
     'BasicRestorer', 'SRGAN', 'ESRGAN', 'EDVR', 'LIIF', 'BasicVSR', 'TTSR',
-    'GLEAN', 'TDAN', 'DIC'
+    'GLEAN', 'TDAN', 'DIC', 'SRSWIN'
 ]

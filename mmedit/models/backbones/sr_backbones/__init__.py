@@ -13,8 +13,11 @@ from .tdan_net import TDANNet
 from .tof import TOFlow
 from .ttsr_net import TTSRNet
 
+from .swin_transformer import SwinTransformer
+from .uper_sr import UPerSR
+
 __all__ = [
     'MSRResNet', 'RRDBNet', 'EDSR', 'EDVRNet', 'TOFlow', 'SRCNN', 'DICNet',
     'BasicVSRNet', 'IconVSR', 'RDN', 'TTSRNet', 'GLEANStyleGANv2', 'TDANNet',
-    'LIIFEDSR', 'LIIFRDN'
+    'LIIFEDSR', 'LIIFRDN', 'SwinTransformer', 'UPerSR'
 ]
