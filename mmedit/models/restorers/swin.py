@@ -5,6 +5,7 @@ from ..common import set_requires_grad
 from ..registry import MODELS
 from .basic_restorer import BasicRestorer
 
+from mmedit.ops import resize
 
 @MODELS.register_module()
 class SRSWIN(BasicRestorer):
@@ -29,13 +30,16 @@ class SRSWIN(BasicRestorer):
     def __init__(self,
                  encoder,
                  decoder,
+                 upsampler,
                  scale=2,
                  pixel_loss=None,
                  perceptual_loss=None,
                  train_cfg=None,
                  test_cfg=None,
                  encoder_pretrained=None,
-                 decoder_pretrained=None):
+                 decoder_pretrained=None,
+                 upsampler_pretrained=None,
+                 align_corners=False):
         super(BasicRestorer, self).__init__()
 
         self.train_cfg = train_cfg
@@ -45,6 +49,11 @@ class SRSWIN(BasicRestorer):
         self.encoder = build_backbone(encoder)
         # decoder
         self.decoder = build_backbone(decoder)
+        # upsampler
+        self.upsampler = build_backbone(upsampler)
+
+        self.scale = scale
+        self.align_corners=align_corners
 
         # support fp16
         self.fp16_enabled = False
@@ -60,9 +69,9 @@ class SRSWIN(BasicRestorer):
                                 self.train_cfg.get('disc_init_steps', 0))
         self.step_counter = 0  # counting training steps
 
-        self.init_weights(encoder_pretrained, decoder_pretrained)
+        self.init_weights(encoder_pretrained, decoder_pretrained, upsampler_pretrained)
 
-    def init_weights(self, encoder_pretrained=None, decoder_pretrained=None):
+    def init_weights(self, encoder_pretrained=None, decoder_pretrained=None, upsampler_pretrained=None):
         """Init weights for models.
 
         Args:
@@ -71,6 +80,7 @@ class SRSWIN(BasicRestorer):
         """
         self.encoder.init_weights(pretrained=encoder_pretrained)
         self.decoder.init_weights(pretrained=decoder_pretrained)
+        self.upsampler.init_weights(pretrained=upsampler_pretrained)
 
     @auto_fp16(apply_to=('lq', ))
     def forward(self, lq, gt=None, test_mode=False, **kwargs):
@@ -102,17 +112,20 @@ class SRSWIN(BasicRestorer):
         lq = data_batch['lq']
         gt = data_batch['gt']
 
-        # forward - encoder
+        # forward - encoder and decoder
         output = self.encoder(lq)
-
-        # notify the size to decoder
-        self.decoder.set_output_size(lq.shape[2:] * self.scale)
-
-        # forward - decoder
         output = self.decoder(output)
 
-        print(output.size())
-        print(gt.size())
+        # simple upsampling
+        shape = [i * self.scale for i in list(lq.shape[2:])]
+        output = resize(
+            input=output,
+            size=shape,
+            mode='bilinear',
+            align_corners=self.align_corners)
+
+        # forward - final conv
+        output = self.upsampler(output)
 
         losses = dict()
         log_vars = dict()
@@ -135,9 +148,11 @@ class SRSWIN(BasicRestorer):
         # optimize
         optimizer['encoder'].zero_grad()
         optimizer['decoder'].zero_grad()
+        optimizer['upsampler'].zero_grad()
         loss_f.backward()
         optimizer['encoder'].step()
         optimizer['decoder'].step()
+        optimizer['upsampler'].step()
 
         self.step_counter += 1
 

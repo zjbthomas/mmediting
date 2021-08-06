@@ -9,8 +9,6 @@ from .psp import PPM
 
 import torch.nn.functional as F
 
-import math
-
 @BACKBONES.register_module()
 class UPerSR(nn.Module):
     """Unified Perceptual Parsing for Scene Understanding.
@@ -94,31 +92,6 @@ class UPerSR(nn.Module):
             norm_cfg=self.norm_cfg,
             act_cfg=self.act_cfg)
 
-        # Final handling
-        self.output_convs = nn.ModuleList()
-        self.output_convs.append(
-            ConvModule(
-                 self.channels,
-                 self.channels,
-                 3,
-                 stride=1,
-                 padding=1,
-                 conv_cfg=self.conv_cfg,
-                 norm_cfg=None,
-                 act_cfg=self.act_cfg))
-        
-        self.output_convs.append(
-            ConvModule(
-                 self.channels,
-                 3, # for RGB
-                 3,
-                 stride=1,
-                 padding=1,
-                 conv_cfg=self.conv_cfg,
-                 norm_cfg=None,
-                 act_cfg=dict(type='Tanh') # always use Tanh as output act
-                 ))
-
     def _init_inputs(self, in_channels, in_index, input_transform):
         """Check and initialize input transforms.
 
@@ -167,9 +140,6 @@ class UPerSR(nn.Module):
 
         return output
 
-    def set_output_size(self, size):
-        self.output_size = size
-
     def forward(self, inputs):
         """Forward function."""
 
@@ -210,17 +180,8 @@ class UPerSR(nn.Module):
         fpn_outs = torch.cat(fpn_outs, dim=1)
         output = self.fpn_bottleneck(fpn_outs)
         
-        # Replace cls_seg with upsampling
+        # No need to have cls_seg
         #output = self.cls_seg(output)
-
-        output = resize(
-            input=output,
-            size=self.output_size,
-            mode='bilinear',
-            align_corners=self.align_corners)
-
-        for i in range(len(self.output_convs)):
-            output = self.output_convs[i](output)
 
         return output
 

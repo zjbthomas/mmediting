@@ -15,9 +15,10 @@ from .ttsr_net import TTSRNet
 
 from .swin_transformer import SwinTransformer
 from .uper_sr import UPerSR
+from.upsampler import Upsampler
 
 __all__ = [
     'MSRResNet', 'RRDBNet', 'EDSR', 'EDVRNet', 'TOFlow', 'SRCNN', 'DICNet',
     'BasicVSRNet', 'IconVSR', 'RDN', 'TTSRNet', 'GLEANStyleGANv2', 'TDANNet',
-    'LIIFEDSR', 'LIIFRDN', 'SwinTransformer', 'UPerSR'
+    'LIIFEDSR', 'LIIFRDN', 'SwinTransformer', 'UPerSR', 'Upsampler'
 ]
