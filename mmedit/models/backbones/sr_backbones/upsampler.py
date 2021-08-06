@@ -42,7 +42,7 @@ class Upsampler(nn.Module):
                  padding=1,
                  conv_cfg=self.conv_cfg,
                  norm_cfg=None,
-                 act_cfg=dict(type='Tanh') # always use Tanh as output act
+                 act_cfg=None # no act at the end
                  ))
 
     def forward(self, inputs):
