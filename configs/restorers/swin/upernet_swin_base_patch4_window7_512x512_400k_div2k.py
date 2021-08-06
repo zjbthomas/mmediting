@@ -1,15 +1,16 @@
 exp_name = 'upernet_swin_base_patch4_window7_512x512_400k_div2k'
 
-scale = 4
+scale = 2
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='SRSWIN',
+    scale=scale,
     encoder=dict(
         type='SwinTransformer',
-        embed_dim=128,
-        depths=[2, 2, 18, 2],
-        num_heads=[4, 8, 16, 32],
+        embed_dim=96,
+        depths=[2, 2, 6, 2],
+        num_heads=[3, 6, 12, 24],
         window_size=7,
         ape=False,
         drop_path_rate=0.3,
@@ -19,7 +20,6 @@ model = dict(
         in_channels=[96, 192, 384, 768],
         in_index=[0, 1, 2, 3],
         pool_scales=(1, 2, 3, 6),
-        num_upsample=2, # new parameters, important
         channels=512, # this is not quite important - UPerSRHead will always output 3 channels
         norm_cfg=norm_cfg,
         align_corners=False),
@@ -31,7 +31,7 @@ model = dict(
         perceptual_weight=1.0,
         style_weight=0,
         norm_img=False),
-    encoder_pretrained='pretrained/swin_tiny_patch4_window7_224.pth',
+    encoder_pretrained='/project/6061878/junbinz/SR/mmediting/pretrained/swin_tiny_patch4_window7_224.pth',
     decoder_pretrained=None
 )
 
@@ -92,8 +92,8 @@ test_pipeline = [
 ]
 
 data = dict(
-    workers_per_gpu=8,
-    train_dataloader=dict(samples_per_gpu=16, drop_last=True),
+    workers_per_gpu=2,
+    train_dataloader=dict(samples_per_gpu=4, drop_last=True),
     val_dataloader=dict(samples_per_gpu=1),
     test_dataloader=dict(samples_per_gpu=1),
     train=dict(
@@ -101,22 +101,22 @@ data = dict(
         times=1000,
         dataset=dict(
             type=train_dataset_type,
-            lq_folder='data/DIV2K/DIV2K_train_LR_bicubic/X4_sub',
-            gt_folder='data/DIV2K/DIV2K_train_HR_sub',
-            ann_file='data/DIV2K/meta_info_DIV2K800sub_GT.txt',
+            lq_folder='/project/6061878/junbinz/SR/data/DIV2K/DIV2K_train_LR_bicubic/X2_sub',
+            gt_folder='/project/6061878/junbinz/SR/data/DIV2K/DIV2K_train_HR_sub',
+            ann_file='/project/6061878/junbinz/SR/data/DIV2K/meta_info_DIV2K800sub_GT.txt',
             pipeline=train_pipeline,
             scale=scale)),
     val=dict(
         type=val_dataset_type,
-        lq_folder='data/val_set14/Set14_bicLRx4',
-        gt_folder='data/val_set14/Set14',
+        lq_folder='/project/6061878/junbinz/SR/data/DIV2K/DIV2K_valid_LR_bicubic/X2',
+        gt_folder='/project/6061878/junbinz/SR/data/DIV2K/DIV2K_valid_HR',
         pipeline=test_pipeline,
         scale=scale,
         filename_tmpl='{}'),
     test=dict(
         type=val_dataset_type,
-        lq_folder='data/val_set5/Set5_bicLRx4',
-        gt_folder='data/val_set5/Set5',
+        lq_folder='/project/6061878/junbinz/SR/data/DIV2K/DIV2K_valid_LR_bicubic/X2',
+        gt_folder='/project/6061878/junbinz/SR/data/DIV2K/DIV2K_valid_HR',
         pipeline=test_pipeline,
         scale=scale,
         filename_tmpl='{}'))
@@ -149,6 +149,6 @@ visual_config = None
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 work_dir = f'./work_dirs/{exp_name}'
-load_from = 'work_dirs/101_RRDBNet/101_RRDBNet_iter_1000000.pth'
+load_from = None
 resume_from = None
 workflow = [('train', 1)]

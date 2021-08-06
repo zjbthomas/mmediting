@@ -29,6 +29,7 @@ class SRSWIN(BasicRestorer):
     def __init__(self,
                  encoder,
                  decoder,
+                 scale=2,
                  pixel_loss=None,
                  perceptual_loss=None,
                  train_cfg=None,
@@ -101,9 +102,17 @@ class SRSWIN(BasicRestorer):
         lq = data_batch['lq']
         gt = data_batch['gt']
 
-        # forward
+        # forward - encoder
         output = self.encoder(lq)
+
+        # notify the size to decoder
+        self.decoder.set_output_size(lq.shape[2:] * self.scale)
+
+        # forward - decoder
         output = self.decoder(output)
+
+        print(output.size())
+        print(gt.size())
 
         losses = dict()
         log_vars = dict()

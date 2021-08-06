@@ -9,6 +9,8 @@ from .psp import PPM
 
 import torch.nn.functional as F
 
+import math
+
 @BACKBONES.register_module()
 class UPerSR(nn.Module):
     """Unified Perceptual Parsing for Scene Understanding.
@@ -30,8 +32,7 @@ class UPerSR(nn.Module):
             in_index=-1,
             input_transform='multiple_select',
             align_corners=False,
-            pool_scales=(1, 2, 3, 6),
-            num_upsample=2):
+            pool_scales=(1, 2, 3, 6)):
 
         super().__init__()
 
@@ -93,20 +94,7 @@ class UPerSR(nn.Module):
             norm_cfg=self.norm_cfg,
             act_cfg=self.act_cfg)
 
-        # Upsampling Module
-        self.upsampling_convs = nn.ModuleList()
-        for _ in range(num_upsample):
-            up_conv = ConvModule(
-                 self.channels,
-                 self.channels,
-                 3,
-                 stride=1,
-                 padding=1,
-                 conv_cfg=self.conv_cfg,
-                 norm_cfg=None,
-                 act_cfg=self.act_cfg)
-            self.upsampling_convs.append(up_conv)
-
+        # Final handling
         self.output_convs = nn.ModuleList()
         self.output_convs.append(
             ConvModule(
@@ -179,6 +167,9 @@ class UPerSR(nn.Module):
 
         return output
 
+    def set_output_size(self, size):
+        self.output_size = size
+
     def forward(self, inputs):
         """Forward function."""
 
@@ -222,8 +213,11 @@ class UPerSR(nn.Module):
         # Replace cls_seg with upsampling
         #output = self.cls_seg(output)
 
-        for i in range(len(self.upsampling_convs)):
-            output = self.upsampling_convs[i](F.interpolate(output, scale_factor=2, mode='nearest'))
+        output = resize(
+            input=output,
+            size=self.output_size,
+            mode='bilinear',
+            align_corners=self.align_corners)
 
         for i in range(len(self.output_convs)):
             output = self.output_convs[i](output)
