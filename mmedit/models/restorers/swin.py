@@ -1,6 +1,8 @@
 import numbers
 import os.path as osp
 
+import torch
+
 import mmcv
 from mmcv.runner import auto_fp16
 
@@ -37,7 +39,6 @@ class SRSWIN(BasicRestorer):
                  encoder,
                  decoder,
                  upsampler,
-                 scale=2,
                  pixel_loss=None,
                  perceptual_loss=None,
                  train_cfg=None,
@@ -58,7 +59,6 @@ class SRSWIN(BasicRestorer):
         # upsampler
         self.upsampler = build_backbone(upsampler)
 
-        self.scale = scale
         self.align_corners=align_corners
 
         # support fp16
@@ -104,6 +104,26 @@ class SRSWIN(BasicRestorer):
         raise ValueError(
             'SRGAN model does not supprot `forward_train` function.')
 
+    def network_forward(self, lq):
+        # forward - encoder and decoder
+        output = self.encoder(lq)
+        output = self.decoder(output)
+
+        # upsample decoder output to match lq size
+        output = resize(
+            input=output,
+            size=lq.shape[2:],
+            mode='bilinear',
+            align_corners=self.align_corners)
+
+        # residual
+        output = torch.add(output, lq)
+
+        # forward - upsampling
+        output = self.upsampler(output)
+
+        return output
+
     def train_step(self, data_batch, optimizer):
         """Train step.
 
@@ -118,20 +138,8 @@ class SRSWIN(BasicRestorer):
         lq = data_batch['lq']
         gt = data_batch['gt']
 
-        # forward - encoder and decoder
-        output = self.encoder(lq)
-        output = self.decoder(output)
-
-        # simple upsampling
-        shape = [i * self.scale for i in list(lq.shape[2:])]
-        output = resize(
-            input=output,
-            size=shape,
-            mode='bilinear',
-            align_corners=self.align_corners)
-
-        # forward - final conv
-        output = self.upsampler(output)
+        # forward
+        output = self.network_forward(lq)
 
         losses = dict()
         log_vars = dict()
@@ -190,20 +198,9 @@ class SRSWIN(BasicRestorer):
         Returns:
             dict: Output results.
         """
-        # forward - encoder and decoder
-        output = self.encoder(lq)
-        output = self.decoder(output)
-
-        # simple upsampling
-        shape = [i * self.scale for i in list(lq.shape[2:])]
-        output = resize(
-            input=output,
-            size=shape,
-            mode='bilinear',
-            align_corners=self.align_corners)
-
-        # forward - final conv
-        output = self.upsampler(output)
+        
+        # forward
+        output = self.network_forward(lq)
 
         if self.test_cfg is not None and self.test_cfg.get('metrics', None):
             assert gt is not None, (

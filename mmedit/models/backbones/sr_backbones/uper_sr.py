@@ -92,6 +92,16 @@ class UPerSR(nn.Module):
             norm_cfg=self.norm_cfg,
             act_cfg=self.act_cfg)
 
+        # final conv to output 3 channels
+        self.final = ConvModule(
+            self.channels,
+            3,
+            3,
+            padding=1,
+            conv_cfg=self.conv_cfg,
+            norm_cfg=self.norm_cfg,
+            act_cfg=self.act_cfg)
+
     def _init_inputs(self, in_channels, in_index, input_transform):
         """Check and initialize input transforms.
 
@@ -182,6 +192,8 @@ class UPerSR(nn.Module):
         
         # No need to have cls_seg
         #output = self.cls_seg(output)
+
+        output = self.final(output)
 
         return output
 

@@ -1,13 +1,11 @@
 exp_name = 'upernet_swin_base_patch4_window7_512x512_400k_div2k'
 
 scale = 2
-channels=512
 align_corners=False
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='SRSWIN',
-    scale=scale,
     align_corners=align_corners,
     encoder=dict(
         type='SwinTransformer',
@@ -23,11 +21,12 @@ model = dict(
         in_channels=[96, 192, 384, 768],
         in_index=[0, 1, 2, 3],
         pool_scales=(1, 2, 3, 6),
-        channels=channels, # this is not quite important - UPerSRHead will always output 3 channels
+        channels=512, # this is not quite important - UPerSRHead will always output 3 channels
         norm_cfg=norm_cfg,
         align_corners=align_corners),
     upsampler=dict(type='Upsampler',
-        channels=channels),
+        channels=64,
+        scale=scale),
     pixel_loss=dict(type='L1Loss', loss_weight=1e-2, reduction='mean'),
     perceptual_loss=dict(
         type='PerceptualLoss',
